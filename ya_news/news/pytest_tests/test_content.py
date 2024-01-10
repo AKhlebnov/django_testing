@@ -1,49 +1,45 @@
-"""Модуль для тест контента."""
+"""Модуль для тестов контента."""
 import pytest
 from django.conf import settings
-from django.urls import reverse
+
+from news.forms import CommentForm
 
 
-def test_news_count(client, news_list):
+def test_news_count(client, url_home):
     """Тест проверки количества новостей на главной странице."""
-    url = reverse('news:home')
-    response = client.get(url)
+    response = client.get(url_home)
     object_list = response.context['object_list']
-    news_count = len(object_list)
+    news_count = object_list.count()
     assert news_count == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
-def test_news_order(client, news_list):
+def test_news_order(client, url_home):
     """Тест сортировки новостей на главной странице."""
-    url = reverse('news:home')
-    response = client.get(url)
+    response = client.get(url_home)
     object_list = response.context['object_list']
     all_dates = [news.date for news in object_list]
     sorted_dates = sorted(all_dates, reverse=True)
     assert all_dates == sorted_dates
 
 
-def test_comments_order(client, comment_list, id_news_for_args):
+def test_comments_order(client, comment_list, url_detail):
     """Тест на сортировку комментариев новости."""
-    url = reverse('news:detail', args=id_news_for_args)
-    response = client.get(url)
+    response = client.get(url_detail)
     assert 'news' in response.context
     news = response.context['news']
     all_comments = news.comment_set.all()
     assert all_comments[0].created < all_comments[1].created
 
 
-@pytest.mark.parametrize(
-    'parametrized_client, form_in_list',
-    (
-        (pytest.lazy_fixture('author_client'), True),
-        (pytest.lazy_fixture('anonymous_client'), False),
-    )
-)
-def test_authorized_anonymous_clienthas_has(
-    parametrized_client, form_in_list, id_news_for_args
-):
-    """Тест проверки формы у авторизированного пользователя и анонима."""
-    url = reverse('news:detail', args=id_news_for_args)
-    response = parametrized_client.get(url)
-    assert ('form' in response.context) is form_in_list
+def test_authorized_client_has_form(author_client, url_detail):
+    """Тест проверки формы у авторизованного пользователя"""
+    response = author_client.get(url_detail)
+    assert 'form' in response.context
+    assert isinstance(response.context['form'], CommentForm)
+
+
+@pytest.mark.django_db
+def test_anonymous_client_has_form(anonymous_client, url_detail):
+    """Тест проверки формы у анонимного пользователя"""
+    response = anonymous_client.get(url_detail)
+    assert 'form' not in response.context
