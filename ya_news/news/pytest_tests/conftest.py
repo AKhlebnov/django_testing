@@ -1,4 +1,4 @@
-"""Доплнительные фикстуры pytest."""
+"""Дополнительные фикстуры pytest."""
 from datetime import datetime, timedelta
 from django.urls import reverse
 
